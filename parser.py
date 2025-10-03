@@ -238,6 +238,144 @@ def track_duplicates(all_phrases):
     return duplicates
 
 
+def format_number(num):
+    """Форматирует число с разделителями тысяч"""
+    return f"{num:,}".replace(',', ' ')
+
+
+def generate_header(config, total_queries, timestamp):
+    """Генерирует шапку Markdown документа"""
+    business = config['business_info']
+    settings = config['parser_settings']
+
+    header = f"""# 📊 Результаты парсинга Яндекс Вордстат
+
+**Дата:** {timestamp}
+**Регион:** {business['city']} ({business['region_code']})
+**Устройства:** {', '.join(settings['devices'])}
+**Обработано запросов:** {total_queries}
+
+---
+
+"""
+    return header
+
+
+def generate_query_section(query_num, query, result, city, limit, seen_phrases):
+    """
+    Генерирует секцию Markdown для одного запроса
+
+    Args:
+        query_num: Номер запроса
+        query: Текст запроса
+        result: Результат от API
+        city: Название города
+        limit: Лимит фраз для вывода
+        seen_phrases: Словарь отслеживания дубликатов
+
+    Returns:
+        str: Markdown секция
+    """
+    if not result or 'topRequests' not in result:
+        return f"## 🔍 Запрос {query_num}: {query}\n\n❌ Не удалось получить данные\n\n---\n\n"
+
+    total_count = result.get('totalCount', 0)
+    phrases = result.get('topRequests', [])
+
+    # Сортируем по частотности
+    phrases_sorted = sorted(phrases, key=lambda x: x['count'], reverse=True)
+    top_phrases = phrases_sorted[:limit]
+
+    section = f"""## 🔍 Запрос {query_num}: {query}
+
+**Общая частотность:** {format_number(total_count)} показов/мес
+**Найдено фраз:** {len(phrases)}
+**Топ-{limit} по частотности:**
+
+| № | Фраза | Частотность | Тип |
+|---|-------|-------------|-----|
+"""
+
+    for i, item in enumerate(top_phrases, 1):
+        phrase_text = item['phrase']
+        count = format_number(item['count'])
+        category, emoji = categorize_phrase(phrase_text, city)
+
+        # Отслеживание дубликатов
+        if phrase_text in seen_phrases:
+            seen_phrases[phrase_text].append(query)
+            duplicate_mark = f" *(встречается в {len(seen_phrases[phrase_text])} запросах)*"
+        else:
+            seen_phrases[phrase_text] = [query]
+            duplicate_mark = ""
+
+        section += f"| {i} | {phrase_text}{duplicate_mark} | {count} | {emoji} {category} |\n"
+
+    section += "\n---\n\n"
+    return section
+
+
+def generate_summary(all_results, seen_phrases):
+    """Генерирует сводную статистику"""
+    # Собираем все фразы
+    all_phrases_list = []
+    for result in all_results:
+        if result and 'topRequests' in result:
+            all_phrases_list.extend(result['topRequests'])
+
+    # Сортируем по частотности
+    all_phrases_sorted = sorted(all_phrases_list, key=lambda x: x['count'], reverse=True)
+    top_10 = all_phrases_sorted[:10]
+
+    summary = """## 📈 Сводная статистика
+
+**Топ-10 самых частотных фраз по всем запросам:**
+
+| № | Фраза | Частотность |
+|---|-------|-------------|
+"""
+
+    for i, item in enumerate(top_10, 1):
+        phrase = item['phrase']
+        count = format_number(item['count'])
+        summary += f"| {i} | {phrase} | {count} |\n"
+
+    # Статистика дубликатов
+    duplicates = {k: v for k, v in seen_phrases.items() if len(v) > 1}
+
+    if duplicates:
+        summary += f"\n**Фразы, встречающиеся в нескольких запросах:** {len(duplicates)}\n"
+
+    return summary
+
+
+def save_results(config, queries, all_results, seen_phrases):
+    """Сохраняет результаты в results.md"""
+    from datetime import datetime
+
+    timestamp = datetime.now().strftime("%d.%m.%Y %H:%M")
+
+    # Генерируем документ
+    content = generate_header(config, len(queries), timestamp)
+
+    # Добавляем секции для каждого запроса
+    limit = config['parser_settings']['top_results_limit']
+    city = config['business_info']['city']
+
+    for i, (query, result) in enumerate(zip(queries, all_results), 1):
+        section = generate_query_section(i, query, result, city, limit, seen_phrases)
+        content += section
+
+    # Добавляем сводную статистику
+    content += generate_summary([r for r in all_results if r], seen_phrases)
+
+    # Сохраняем
+    with open('results.md', 'w', encoding='utf-8') as f:
+        f.write(content)
+
+    print(f"\n✅ Результаты сохранены в results.md")
+
+
 def main():
     """Главная функция парсера"""
     print("🚀 Запуск парсера Яндекс Вордстат\n")
