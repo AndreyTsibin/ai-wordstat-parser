@@ -15,7 +15,7 @@
       "https://www.stroikaspb.com/remont-komnat/",
       "https://www.prorabneva.ru/remont-komnat"
     ],
-    "budget": "10-20 статей/месяц",
+    "budget": "20-30 статей/месяц",
     "utp": [
       "работа без отселения заказчика",
       "гарантия на работы",
@@ -26,5 +26,42 @@
     "devices": ["desktop"],
     "top_results_limit": 50,
     "delay_between_requests": 2
+  },
+  "content_plan_settings": {
+    "target_page": "/remont-komnat-spb",
+    "articles_per_month": 7,
+    "planning_period_months": 5,
+    "expected_traffic_per_month": "5000-8000",
+    "conversion_rate_percent": "2-3",
+    "target_top_positions": 20,
+    "article_length_words": "2000-4000",
+    "phone": "+7 (812) 218 12 31",
+    "price_per_sqm": "от 8000-9000₽/м²",
+    "internal_links": [
+      "/remont-komnaty",
+      "/remont-tualeta-spb",
+      "/remont-kvartir-spb"
+    ],
+    "anchor_texts": [
+      "ремонт комнаты в СПб",
+      "ремонт под ключ",
+      "комплексный ремонт"
+    ],
+    "min_frequency_threshold": 50,
+    "priority_categories": ["commercial", "price"],
+    "article_blocks": {
+      "commercial": {
+        "priority": "максимальный",
+        "weight": 0.5
+      },
+      "price": {
+        "priority": "высокий",
+        "weight": 0.3
+      },
+      "informational": {
+        "priority": "средний",
+        "weight": 0.2
+      }
+    }
   }
 }
