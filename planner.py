@@ -94,24 +94,126 @@ def extract_category(category_str):
     return 'other'
 
 
+def extract_root_words(phrase):
+    """
+    Извлекает корневые слова из фразы для кластеризации
+
+    Args:
+        phrase: Фраза для анализа
+
+    Returns:
+        set: Набор значимых слов
+    """
+    # Стоп-слова (предлоги, союзы и т.д.)
+    stop_words = {
+        'в', 'на', 'и', 'с', 'под', 'для', 'по', 'от', 'до', 'из', 'к', 'о',
+        'спб', 'санкт', 'петербург', 'москва', 'мск'
+    }
+
+    words = phrase.lower().split()
+    # Убираем стоп-слова и короткие слова
+    meaningful = {w for w in words if len(w) > 2 and w not in stop_words}
+
+    return meaningful
+
+
+def find_semantic_cluster(phrase, phrase_data, existing_clusters, min_common_words=2):
+    """
+    Находит семантический кластер для фразы на основе общих слов
+
+    Args:
+        phrase: Фраза для кластеризации
+        phrase_data: Данные фразы (частотность, категория)
+        existing_clusters: Существующие кластеры
+        min_common_words: Минимальное количество общих слов
+
+    Returns:
+        str: Название кластера или None
+    """
+    phrase_words = extract_root_words(phrase)
+
+    # Специальные паттерны для популярных тем
+    special_patterns = {
+        'под ключ': {'под', 'ключ'},
+        'цена стоимость': {'цена', 'стоимость', 'сколько', 'стоит', 'прайс'},
+        'хрущевка': {'хрущевк'},
+        'маленькая': {'маленьк', 'небольш'},
+        'детская': {'детск'},
+        'гостиная': {'гостин'},
+        'панельный дом': {'панельн'}
+    }
+
+    # Проверяем специальные паттерны
+    for cluster_name, pattern_words in special_patterns.items():
+        if any(word in phrase.lower() for word in pattern_words):
+            return cluster_name
+
+    # Ищем кластер с максимальным совпадением слов
+    best_match = None
+    max_common = 0
+
+    for cluster_name, cluster_phrases in existing_clusters.items():
+        # Берем первую фразу кластера как эталон
+        if cluster_phrases:
+            reference_phrase = cluster_phrases[0]['phrase']
+            reference_words = extract_root_words(reference_phrase)
+            common_words = phrase_words & reference_words
+
+            if len(common_words) >= min_common_words and len(common_words) > max_common:
+                max_common = len(common_words)
+                best_match = cluster_name
+
+    return best_match
+
+
 def cluster_phrases(phrases, config):
-    """Кластеризация фраз по темам статей"""
+    """Кластеризация фраз по темам статей с улучшенной семантической группировкой"""
     settings = config['content_plan_settings']
     min_freq = settings.get('min_frequency_threshold', 50)
 
     # Фильтруем фразы по минимальной частотности
     filtered = [p for p in phrases if p['frequency'] >= min_freq]
 
-    # Группируем по категориям
-    clusters = defaultdict(list)
-    for phrase in filtered:
-        clusters[phrase['category']].append(phrase)
+    # Сортируем по частотности (самые частотные будут создавать кластеры)
+    filtered.sort(key=lambda x: x['frequency'], reverse=True)
+
+    # Семантические кластеры
+    semantic_clusters = defaultdict(list)
+
+    for phrase_data in filtered:
+        phrase = phrase_data['phrase']
+
+        # Пытаемся найти существующий кластер
+        cluster_name = find_semantic_cluster(phrase, phrase_data, semantic_clusters)
+
+        if cluster_name:
+            # Добавляем в существующий кластер
+            semantic_clusters[cluster_name].append(phrase_data)
+        else:
+            # Создаем новый кластер на основе главных слов фразы
+            root_words = extract_root_words(phrase)
+            if root_words:
+                # Используем 1-2 самых длинных слова как название кластера
+                sorted_words = sorted(root_words, key=len, reverse=True)
+                cluster_name = ' '.join(sorted_words[:2])
+            else:
+                cluster_name = phrase[:30]  # Fallback
+
+            semantic_clusters[cluster_name].append(phrase_data)
+
+    # Группируем также по категориям для совместимости
+    category_clusters = defaultdict(list)
+    for phrase_data in filtered:
+        category_clusters[phrase_data['category']].append(phrase_data)
 
     # Сортируем каждую группу по частотности
-    for category in clusters:
-        clusters[category].sort(key=lambda x: x['frequency'], reverse=True)
+    for cluster in semantic_clusters:
+        semantic_clusters[cluster].sort(key=lambda x: x['frequency'], reverse=True)
 
-    return clusters
+    for category in category_clusters:
+        category_clusters[category].sort(key=lambda x: x['frequency'], reverse=True)
+
+    return semantic_clusters
 
 
 def calculate_priority(frequency):

@@ -1,6 +1,6 @@
 {
   "business_info": {
-    "site": "apple.com",
+    "site": "lenaremont-spb.ru",
     "niche": "ремонт комнат",
     "city": "Санкт-Петербург",
     "region_code": 2,
@@ -25,7 +25,11 @@
   "parser_settings": {
     "devices": ["desktop"],
     "top_results_limit": 50,
-    "delay_between_requests": 2
+    "delay_between_requests": 2,
+    "recursive_parsing": true,
+    "recursion_depth": 2,
+    "recursive_top_queries": 10,
+    "minus_words": ["ванн", "душев", "туалет", "санузл", "сантехник", "кухн", "плитк"]
   },
   "content_plan_settings": {
     "target_page": "/remont-kvartir-spb",
@@ -35,7 +39,7 @@
     "conversion_rate_percent": "2-3",
     "target_top_positions": 20,
     "article_length_words": "2000-4000",
-    "phone": "+7 (800) 000 00 00",
+    "phone": "+7 (812) 218 12 31",
     "price_per_sqm": "от 8000-9000₽/м²",
     "internal_links": [
       "/remont-komnaty",

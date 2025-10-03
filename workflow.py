@@ -50,6 +50,45 @@ def load_config():
         sys.exit(1)
 
 
+def extract_queries_from_competitors(competitors):
+    """
+    Извлекает потенциальные запросы из URL конкурентов
+
+    Args:
+        competitors: Список URL конкурентов
+
+    Returns:
+        list: Список дополнительных запросов
+    """
+    import urllib.request
+    import re
+
+    additional_queries = []
+
+    print("   🔍 Анализ URL конкурентов...")
+
+    for url in competitors:
+        try:
+            # Извлекаем ключи из самого URL
+            # Пример: /remont-komnat/ → "ремонт комнат"
+            path = url.split('/')[-2] if url.endswith('/') else url.split('/')[-1]
+            # Убираем расширения
+            path = path.replace('.html', '').replace('.php', '')
+
+            # Преобразуем дефисы в пробелы
+            query_from_url = path.replace('-', ' ')
+
+            if len(query_from_url) > 3 and query_from_url not in additional_queries:
+                additional_queries.append(query_from_url)
+                print(f"      • {query_from_url} (из URL)")
+
+        except Exception as e:
+            print(f"      ⚠️  Не удалось обработать {url}: {e}")
+            continue
+
+    return additional_queries
+
+
 def generate_queries(config):
     """Генерация поисковых запросов на основе config.json"""
     print("🤖 Генерация поисковых запросов на основе бизнес-информации...")
@@ -58,6 +97,7 @@ def generate_queries(config):
     niche = business['niche']
     city = business['city']
     services = business['services']
+    competitors = business.get('competitors', [])
 
     # Базовые шаблоны запросов
     queries = []
@@ -86,11 +126,20 @@ def generate_queries(config):
     # 5. Информационные запросы
     queries.append(f"бюджетный {niche}")
 
+    # 6. Запросы от конкурентов
+    if competitors:
+        print()
+        competitor_queries = extract_queries_from_competitors(competitors)
+        # Добавляем только уникальные запросы
+        for q in competitor_queries:
+            if q not in queries:
+                queries.append(q)
+
     # Сохраняем queries.txt
     try:
         with open('queries.txt', 'w', encoding='utf-8') as f:
             f.write('\n'.join(queries))
-        print(f"   ✅ Сгенерировано {len(queries)} запросов")
+        print(f"\n   ✅ Сгенерировано {len(queries)} запросов")
         print(f"   📄 Сохранено в queries.txt")
         return len(queries)
     except Exception as e:

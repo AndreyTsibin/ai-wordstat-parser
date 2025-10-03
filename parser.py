@@ -188,6 +188,27 @@ def fetch_top_requests(token, phrase, region, devices, max_retries=3):
     return None
 
 
+def has_minus_words(phrase, minus_words):
+    """
+    Проверяет, содержит ли фраза минус-слова
+
+    Args:
+        phrase: Поисковая фраза
+        minus_words: Список минус-слов
+
+    Returns:
+        bool: True если фраза содержит минус-слова
+    """
+    if not minus_words:
+        return False
+
+    phrase_lower = phrase.lower()
+    for minus_word in minus_words:
+        if minus_word.lower() in phrase_lower:
+            return True
+    return False
+
+
 def categorize_phrase(phrase, city_name):
     """
     Определяет тип поисковой фразы
@@ -261,7 +282,34 @@ def generate_header(config, total_queries, timestamp):
     return header
 
 
-def generate_query_section(query_num, query, result, city, limit, seen_phrases):
+def filter_phrases_by_minus_words(phrases, minus_words):
+    """
+    Фильтрует фразы по минус-словам
+
+    Args:
+        phrases: Список фраз из API
+        minus_words: Список минус-слов
+
+    Returns:
+        tuple: (отфильтрованные фразы, удаленные фразы)
+    """
+    if not minus_words:
+        return phrases, []
+
+    filtered = []
+    removed = []
+
+    for phrase_data in phrases:
+        phrase = phrase_data['phrase']
+        if has_minus_words(phrase, minus_words):
+            removed.append(phrase)
+        else:
+            filtered.append(phrase_data)
+
+    return filtered, removed
+
+
+def generate_query_section(query_num, query, result, city, limit, seen_phrases, minus_words=None):
     """
     Генерирует секцию Markdown для одного запроса
 
@@ -272,6 +320,7 @@ def generate_query_section(query_num, query, result, city, limit, seen_phrases):
         city: Название города
         limit: Лимит фраз для вывода
         seen_phrases: Словарь отслеживания дубликатов
+        minus_words: Список минус-слов для фильтрации
 
     Returns:
         str: Markdown секция
@@ -282,14 +331,19 @@ def generate_query_section(query_num, query, result, city, limit, seen_phrases):
     total_count = result.get('totalCount', 0)
     phrases = result.get('topRequests', [])
 
+    # Фильтруем по минус-словам
+    filtered_phrases, removed_phrases = filter_phrases_by_minus_words(phrases, minus_words or [])
+
     # Сортируем по частотности
-    phrases_sorted = sorted(phrases, key=lambda x: x['count'], reverse=True)
+    phrases_sorted = sorted(filtered_phrases, key=lambda x: x['count'], reverse=True)
     top_phrases = phrases_sorted[:limit]
+
+    removed_note = f"\n**Отфильтровано по минус-словам:** {len(removed_phrases)}" if removed_phrases else ""
 
     section = f"""## 🔍 Запрос {query_num}: {query}
 
 **Общая частотность:** {format_number(total_count)} показов/мес
-**Найдено фраз:** {len(phrases)}
+**Найдено фраз:** {len(phrases)}{removed_note}
 **Топ-{limit} по частотности:**
 
 | № | Фраза | Частотность | Тип |
@@ -361,9 +415,10 @@ def save_results(config, queries, all_results, seen_phrases):
     # Добавляем секции для каждого запроса
     limit = config['parser_settings']['top_results_limit']
     city = config['business_info']['city']
+    minus_words = config['parser_settings'].get('minus_words', [])
 
     for i, (query, result) in enumerate(zip(queries, all_results), 1):
-        section = generate_query_section(i, query, result, city, limit, seen_phrases)
+        section = generate_query_section(i, query, result, city, limit, seen_phrases, minus_words)
         content += section
 
     # Добавляем сводную статистику
@@ -374,6 +429,59 @@ def save_results(config, queries, all_results, seen_phrases):
         f.write(content)
 
     print(f"\n✅ Результаты сохранены в results.md")
+
+
+def collect_top_phrases_for_recursion(all_results, minus_words, top_n=10):
+    """
+    Собирает топ N фраз для рекурсивного парсинга
+
+    Args:
+        all_results: Результаты парсинга
+        minus_words: Список минус-слов
+        top_n: Количество топ фраз
+
+    Returns:
+        list: Список фраз для рекурсивного парсинга
+    """
+    all_phrases = []
+
+    for result in all_results:
+        if result and 'topRequests' in result:
+            phrases = result['topRequests']
+            # Фильтруем по минус-словам
+            filtered, _ = filter_phrases_by_minus_words(phrases, minus_words)
+            all_phrases.extend(filtered)
+
+    # Сортируем по частотности и берем топ N
+    sorted_phrases = sorted(all_phrases, key=lambda x: x['count'], reverse=True)
+    top_phrases = sorted_phrases[:top_n]
+
+    return [p['phrase'] for p in top_phrases]
+
+
+def save_to_csv(seen_phrases, minus_words):
+    """Сохраняет результаты в CSV для удобства работы"""
+    import csv
+
+    # Собираем все фразы с их данными
+    phrases_data = []
+    for phrase, sources in seen_phrases.items():
+        if not has_minus_words(phrase, minus_words):
+            # Получаем частотность из первого источника (она одинакова)
+            phrases_data.append({
+                'phrase': phrase,
+                'sources_count': len(sources)
+            })
+
+    # Сохраняем CSV
+    with open('results.csv', 'w', encoding='utf-8-sig', newline='') as f:
+        writer = csv.writer(f)
+        writer.writerow(['Фраза', 'Встречается в запросах'])
+
+        for data in phrases_data:
+            writer.writerow([data['phrase'], data['sources_count']])
+
+    print(f"📊 Экспорт в CSV: results.csv")
 
 
 def main():
@@ -392,15 +500,30 @@ def main():
     business = config['business_info']
     settings = config['parser_settings']
 
+    recursive_enabled = settings.get('recursive_parsing', False)
+    recursion_depth = settings.get('recursion_depth', 2)
+    recursive_top_n = settings.get('recursive_top_queries', 10)
+    minus_words = settings.get('minus_words', [])
+
     print(f"📂 Регион: {business['city']} ({business['region_code']})")
     print(f"📱 Устройства: {', '.join(settings['devices'])}")
-    print(f"📋 Загружено запросов: {len(queries)}\n")
+    print(f"📋 Загружено запросов: {len(queries)}")
+    if recursive_enabled:
+        print(f"🔄 Рекурсивный парсинг: ВКЛ (глубина: {recursion_depth}, топ: {recursive_top_n})")
+    if minus_words:
+        print(f"🚫 Минус-слова: {len(minus_words)} шт.")
+    print()
 
     # Хранилище результатов
     all_results = []
     seen_phrases = {}
+    all_queries = list(queries)  # Копия для рекурсии
 
-    # Обработка каждого запроса
+    # УРОВЕНЬ 1: Обработка базовых запросов
+    print(f"{'='*50}")
+    print("📍 УРОВЕНЬ 1: Базовые запросы")
+    print(f"{'='*50}\n")
+
     for i, query in enumerate(queries, 1):
         print(f"[{i}/{len(queries)}] Парсинг: \"{query}\"")
 
@@ -428,22 +551,67 @@ def main():
         else:
             print()
 
+    # УРОВЕНЬ 2: Рекурсивный парсинг
+    if recursive_enabled and recursion_depth >= 2:
+        print(f"\n{'='*50}")
+        print("📍 УРОВЕНЬ 2: Рекурсивный парсинг топ фраз")
+        print(f"{'='*50}\n")
+
+        # Собираем топ фразы для рекурсии
+        recursive_queries = collect_top_phrases_for_recursion(all_results, minus_words, recursive_top_n)
+        print(f"🎯 Отобрано {len(recursive_queries)} фраз для рекурсивного парсинга\n")
+
+        for i, query in enumerate(recursive_queries, 1):
+            # Пропускаем уже запрошенные фразы
+            if query in all_queries:
+                continue
+
+            all_queries.append(query)
+            print(f"[{i}/{len(recursive_queries)}] Парсинг (L2): \"{query}\"")
+
+            result = fetch_top_requests(
+                token=token,
+                phrase=query,
+                region=business['region_code'],
+                devices=settings['devices']
+            )
+
+            if result and 'topRequests' in result:
+                total_count = result.get('totalCount', 0)
+                phrases_count = len(result.get('topRequests', []))
+                print(f"   ✅ Получено {phrases_count} фраз ({format_number(total_count)} показов/мес)")
+            else:
+                print(f"   ❌ Не удалось получить данные")
+
+            all_results.append(result)
+
+            # Задержка между запросами
+            if i < len(recursive_queries):
+                delay = settings['delay_between_requests']
+                print(f"   ⏳ Ожидание {delay} сек...\n")
+                time.sleep(delay)
+            else:
+                print()
+
     # Подсчёт успешных запросов
     successful = sum(1 for r in all_results if r)
-    failed = len(queries) - successful
+    failed = len(all_queries) - successful
 
     print(f"{'='*50}")
-    print(f"📊 Обработано: {successful}/{len(queries)} запросов")
+    print(f"📊 Обработано: {successful}/{len(all_queries)} запросов")
     if failed > 0:
         print(f"⚠️  Неудачных: {failed}")
 
     # Сохранение результатов
     if successful > 0:
-        save_results(config, queries, all_results, seen_phrases)
+        save_results(config, all_queries, all_results, seen_phrases)
 
         # Подсчёт всех уникальных фраз
         unique_phrases = len(seen_phrases)
         print(f"📝 Найдено уникальных фраз: {unique_phrases}")
+
+        # Экспорт в CSV
+        save_to_csv(seen_phrases, minus_words)
     else:
         print("❌ Нет данных для сохранения")
 
