@@ -201,7 +201,6 @@ wordstat-parser/
 ├── .env                  # OAuth токен (не коммитится)
 ├── .env.example          # Шаблон для токена
 ├── config.json           # Настройки бизнеса и парсера
-├── config.json.example   # Пример настроек
 ├── queries.txt           # Список запросов (генерирует Claude Code)
 ├── parser.py             # Основной скрипт парсера
 ├── results.md            # Результаты парсинга (генерируется автоматически)
