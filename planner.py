@@ -230,10 +230,11 @@ def calculate_priority(frequency):
         return "★☆☆☆☆", "Низкий"
 
 
-def generate_article_title(phrase, config):
-    """Генерация заголовка статьи на основе ключевой фразы"""
+def generate_article_title(phrase, category, config, template_index=0):
+    """Генерация заголовка статьи на основе ключевой фразы и категории"""
     city = config['business_info']['city']
     city_short = city.split('-')[0] if '-' in city else city
+    phrase_lower = phrase.lower()
 
     # Шаблоны заголовков для разных типов
     templates = {
@@ -243,9 +244,9 @@ def generate_article_title(phrase, config):
             f"{phrase.capitalize()}: профессиональное качество"
         ],
         'price': [
-            f"Сколько стоит {phrase}",
+            f"Сколько стоит {phrase}" if not phrase_lower.startswith('сколько стоит') else phrase.capitalize(),
             f"{phrase.capitalize()}: актуальные цены 2025",
-            f"Стоимость: {phrase}"
+            f"Стоимость {phrase}" if not phrase_lower.startswith('стоимость') else phrase.capitalize()
         ],
         'informational': [
             f"{phrase.capitalize()}: полное руководство",
@@ -262,8 +263,12 @@ def generate_article_title(phrase, config):
         ]
     }
 
-    # Возвращаем первый шаблон для категории
-    return templates.get('other', templates['other'])[0]
+    # Получаем список шаблонов для категории
+    category_templates = templates.get(category, templates['other'])
+
+    # Циклически выбираем шаблон для разнообразия
+    template_idx = template_index % len(category_templates)
+    return category_templates[template_idx]
 
 
 def generate_content_plan(clusters, config):
@@ -302,12 +307,12 @@ def generate_content_plan(clusters, config):
             'articles': []
         }
 
-        for phrase_data in block_phrases:
+        for idx, phrase_data in enumerate(block_phrases):
             stars, priority_text = calculate_priority(phrase_data['frequency'])
 
             article = {
                 'number': article_counter,
-                'title': generate_article_title(phrase_data['phrase'], config),
+                'title': generate_article_title(phrase_data['phrase'], phrase_data['category'], config, idx),
                 'key_phrase': phrase_data['phrase'],
                 'frequency': phrase_data['frequency'],
                 'priority': priority_text,
