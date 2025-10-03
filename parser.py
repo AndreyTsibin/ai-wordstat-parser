@@ -378,6 +378,10 @@ def save_results(config, queries, all_results, seen_phrases):
 
 def main():
     """Главная функция парсера"""
+    from datetime import datetime
+
+    start_time = datetime.now()
+
     print("🚀 Запуск парсера Яндекс Вордстат\n")
 
     # Загрузка конфигурации
@@ -387,25 +391,68 @@ def main():
 
     business = config['business_info']
     settings = config['parser_settings']
-    city = business['city']
 
-    print(f"📂 Регион: {city} ({business['region_code']})")
+    print(f"📂 Регион: {business['city']} ({business['region_code']})")
+    print(f"📱 Устройства: {', '.join(settings['devices'])}")
     print(f"📋 Загружено запросов: {len(queries)}\n")
 
-    # ТЕСТ: категоризация
-    print("🧪 Тестирование категоризации...\n")
+    # Хранилище результатов
+    all_results = []
+    seen_phrases = {}
 
-    test_phrases = [
-        "купить ноутбук москва",
-        "как выбрать ноутбук",
-        "стоимость ноутбука",
-        "ноутбук отзывы",
-        "ноутбук купить"
-    ]
+    # Обработка каждого запроса
+    for i, query in enumerate(queries, 1):
+        print(f"[{i}/{len(queries)}] Парсинг: \"{query}\"")
 
-    for phrase in test_phrases:
-        category, emoji = categorize_phrase(phrase, city)
-        print(f"{emoji} {phrase} → {category}")
+        result = fetch_top_requests(
+            token=token,
+            phrase=query,
+            region=business['region_code'],
+            devices=settings['devices']
+        )
+
+        if result and 'topRequests' in result:
+            total_count = result.get('totalCount', 0)
+            phrases_count = len(result.get('topRequests', []))
+            print(f"   ✅ Получено {phrases_count} фраз ({format_number(total_count)} показов/мес)")
+        else:
+            print(f"   ❌ Не удалось получить данные")
+
+        all_results.append(result)
+
+        # Задержка между запросами (кроме последнего)
+        if i < len(queries):
+            delay = settings['delay_between_requests']
+            print(f"   ⏳ Ожидание {delay} сек...\n")
+            time.sleep(delay)
+        else:
+            print()
+
+    # Подсчёт успешных запросов
+    successful = sum(1 for r in all_results if r)
+    failed = len(queries) - successful
+
+    print(f"{'='*50}")
+    print(f"📊 Обработано: {successful}/{len(queries)} запросов")
+    if failed > 0:
+        print(f"⚠️  Неудачных: {failed}")
+
+    # Сохранение результатов
+    if successful > 0:
+        save_results(config, queries, all_results, seen_phrases)
+
+        # Подсчёт всех уникальных фраз
+        unique_phrases = len(seen_phrases)
+        print(f"📝 Найдено уникальных фраз: {unique_phrases}")
+    else:
+        print("❌ Нет данных для сохранения")
+
+    # Время выполнения
+    end_time = datetime.now()
+    duration = (end_time - start_time).total_seconds()
+    print(f"⏱️  Время выполнения: {duration:.1f} сек")
+    print(f"\n{'='*50}")
+    print("🎉 Парсинг завершён!")
 
 
 if __name__ == "__main__":
