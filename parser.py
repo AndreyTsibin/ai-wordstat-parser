@@ -13,6 +13,38 @@ import time
 API_BASE_URL = "https://api.wordstat.yandex.net"
 API_METHOD = "/v1/topRequests"
 
+# Словари для категоризации
+CATEGORY_KEYWORDS = {
+    'commercial': [
+        'купить', 'заказать', 'под ключ', 'недорого', 'дешево',
+        'цена', 'стоимость', 'прайс', 'акция', 'скидка',
+        'доставка', 'установка', 'монтаж', 'вызвать', 'услуги'
+    ],
+    'informational': [
+        'как', 'что такое', 'почему', 'зачем', 'когда',
+        'где', 'какой', 'какая', 'какие', 'способы',
+        'методы', 'инструкция', 'руководство', 'советы', 'этапы'
+    ],
+    'price': [
+        'цена', 'стоимость', 'прайс', 'сколько стоит',
+        'расценки', 'тариф', 'стоит', 'за квадратный метр'
+    ],
+    'comparison': [
+        'отзывы', 'рейтинг', 'лучшие', 'топ', 'сравнение',
+        'vs', 'или', 'какой выбрать', 'что лучше'
+    ]
+}
+
+# Эмодзи для типов
+CATEGORY_EMOJI = {
+    'commercial': '🛒',
+    'informational': '📚',
+    'price': '💰',
+    'comparison': '⚖️',
+    'local': '📍',
+    'other': '🔍'
+}
+
 
 def load_env():
     """Загружает переменные окружения из файла .env"""
@@ -156,6 +188,56 @@ def fetch_top_requests(token, phrase, region, devices, max_retries=3):
     return None
 
 
+def categorize_phrase(phrase, city_name):
+    """
+    Определяет тип поисковой фразы
+
+    Args:
+        phrase: Поисковая фраза
+        city_name: Название города для определения локальных запросов
+
+    Returns:
+        tuple: (категория, эмодзи)
+    """
+    phrase_lower = phrase.lower()
+
+    # Проверка на локальность
+    is_local = city_name.lower() in phrase_lower
+
+    # Приоритет: price > commercial > informational > comparison
+    for category, keywords in CATEGORY_KEYWORDS.items():
+        for keyword in keywords:
+            if keyword in phrase_lower:
+                emoji = CATEGORY_EMOJI.get(category, '🔍')
+                # Добавляем флаг локальности
+                if is_local and category != 'informational':
+                    emoji = f"{CATEGORY_EMOJI['local']} {emoji}"
+                return category.capitalize(), emoji
+
+    # Если не подошла ни одна категория
+    emoji = CATEGORY_EMOJI['local'] if is_local else CATEGORY_EMOJI['other']
+    return 'Other', emoji
+
+
+def track_duplicates(all_phrases):
+    """
+    Отслеживает дубликаты фраз и считает вхождения
+
+    Args:
+        all_phrases: Словарь {фраза: [список запросов, где встречается]}
+
+    Returns:
+        dict: Словарь с дубликатами
+    """
+    duplicates = {}
+
+    for phrase, sources in all_phrases.items():
+        if len(sources) > 1:
+            duplicates[phrase] = len(sources)
+
+    return duplicates
+
+
 def main():
     """Главная функция парсера"""
     print("🚀 Запуск парсера Яндекс Вордстат\n")
@@ -167,35 +249,25 @@ def main():
 
     business = config['business_info']
     settings = config['parser_settings']
+    city = business['city']
 
-    print(f"📂 Регион: {business['city']} ({business['region_code']})")
-    print(f"📱 Устройства: {', '.join(settings['devices'])}")
+    print(f"📂 Регион: {city} ({business['region_code']})")
     print(f"📋 Загружено запросов: {len(queries)}\n")
 
-    # ТЕСТ: запрос первой фразы
-    print("🧪 Тестирование API...\n")
-    test_phrase = queries[0]
-    print(f"Тестовый запрос: {test_phrase}")
+    # ТЕСТ: категоризация
+    print("🧪 Тестирование категоризации...\n")
 
-    result = fetch_top_requests(
-        token=token,
-        phrase=test_phrase,
-        region=business['region_code'],
-        devices=settings['devices']
-    )
+    test_phrases = [
+        "купить ноутбук москва",
+        "как выбрать ноутбук",
+        "стоимость ноутбука",
+        "ноутбук отзывы",
+        "ноутбук купить"
+    ]
 
-    if result:
-        print(f"✅ API работает!")
-        print(f"📊 Общая частотность: {result.get('totalCount', 0)}")
-        print(f"📝 Получено фраз: {len(result.get('topRequests', []))}")
-
-        # Показываем топ-5
-        if result.get('topRequests'):
-            print("\nТоп-5 фраз:")
-            for i, item in enumerate(result['topRequests'][:5], 1):
-                print(f"  {i}. {item['phrase']} — {item['count']}")
-    else:
-        print("❌ API не отвечает")
+    for phrase in test_phrases:
+        category, emoji = categorize_phrase(phrase, city)
+        print(f"{emoji} {phrase} → {category}")
 
 
 if __name__ == "__main__":
