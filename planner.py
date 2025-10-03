@@ -230,6 +230,157 @@ def calculate_priority(frequency):
         return "★☆☆☆☆", "Низкий"
 
 
+def decline_word_prepositional(word):
+    """
+    Склонение слова в предложный падеж (отвечает на вопрос "о чём? где?")
+
+    Args:
+        word: Слово для склонения
+
+    Returns:
+        str: Слово в предложном падеже
+    """
+    word_lower = word.lower()
+
+    # Словарь готовых форм для городов и частых слов
+    prepositional_dict = {
+        # Города
+        'москва': 'Москве',
+        'санкт-петербург': 'Санкт-Петербурге',
+        'петербург': 'Петербурге',
+        'казань': 'Казани',
+        'екатеринбург': 'Екатеринбурге',
+        'новосибирск': 'Новосибирске',
+        'нижний новгород': 'Нижнем Новгороде',
+        'самара': 'Самаре',
+        'омск': 'Омске',
+        'челябинск': 'Челябинске',
+        'ростов-на-дону': 'Ростове-на-Дону',
+        'уфа': 'Уфе',
+        'красноярск': 'Красноярске',
+        'воронеж': 'Воронеже',
+        'пермь': 'Перми',
+        'волгоград': 'Волгограде',
+        'краснодар': 'Краснодаре',
+        'саратов': 'Саратове',
+        'тюмень': 'Тюмени',
+        'тольятти': 'Тольятти',
+        'ижевск': 'Ижевске',
+        'барнаул': 'Барнауле',
+        'ульяновск': 'Ульяновске',
+        'иркутск': 'Иркутске',
+        'хабаровск': 'Хабаровске',
+        'ярославль': 'Ярославле',
+        'владивосток': 'Владивостоке',
+        'махачкала': 'Махачкале',
+        'томск': 'Томске',
+        'оренбург': 'Оренбурге',
+        'кемерово': 'Кемерово',
+        'новокузнецк': 'Новокузнецке',
+        'рязань': 'Рязани',
+        'астрахань': 'Астрахани',
+        'набережные челны': 'Набережных Челнах',
+        'пенза': 'Пензе',
+        'киров': 'Кирове',
+        'липецк': 'Липецке',
+        'чебоксары': 'Чебоксарах',
+        'калининград': 'Калининграде',
+        'тула': 'Туле',
+        'сочи': 'Сочи',
+        'ставрополь': 'Ставрополе',
+        'курск': 'Курске',
+        'улан-удэ': 'Улан-Удэ',
+        'тверь': 'Твери',
+        'магнитогорск': 'Магнитогорске',
+        'иваново': 'Иваново',
+        'брянск': 'Брянске',
+        'белгород': 'Белгороде',
+        'сургут': 'Сургуте',
+        'владимир': 'Владимире',
+        'нижний тагил': 'Нижнем Тагиле',
+        'архангельск': 'Архангельске',
+        'чита': 'Чите',
+        'калуга': 'Калуге',
+        'смоленск': 'Смоленске',
+        'волжский': 'Волжском',
+        'якутск': 'Якутске',
+        'саранск': 'Саранске',
+        'череповец': 'Череповце',
+        'вологда': 'Вологде',
+        'владикавказ': 'Владикавказе',
+        'грозный': 'Грозном',
+        'мурманск': 'Мурманске',
+        'тамбов': 'Тамбове',
+        'петрозаводск': 'Петрозаводске',
+        'кострома': 'Костроме',
+        'орел': 'Орле',
+        'новороссийск': 'Новороссийске',
+        'йошкар-ола': 'Йошкар-Оле',
+
+        # Страны
+        'россия': 'России',
+        'украина': 'Украине',
+        'беларусь': 'Беларуси',
+        'казахстан': 'Казахстане',
+    }
+
+    # Проверяем словарь
+    if word_lower in prepositional_dict:
+        return prepositional_dict[word_lower]
+
+    # Правила склонения для незнакомых слов
+    # Город на -бург → -бурге
+    if word_lower.endswith('бург'):
+        return word[:-1] + 'е'
+
+    # Город на -ск → -ске
+    if word_lower.endswith('ск'):
+        return word + 'е'
+
+    # Город на -град → -граде
+    if word_lower.endswith('град'):
+        return word + 'е'
+
+    # Составные города через дефис (последнее слово склоняем)
+    if '-' in word:
+        parts = word.split('-')
+        last_declined = decline_word_prepositional(parts[-1])
+        return '-'.join(parts[:-1] + [last_declined])
+
+    # Город на -а/-я (женский род) → -е
+    if word_lower.endswith(('ва', 'на', 'ка', 'га', 'ха', 'ча', 'ща', 'ра', 'ла', 'ма', 'па', 'та', 'да')):
+        return word[:-1] + 'е'
+
+    if word_lower.endswith('я'):
+        return word[:-1] + 'е'
+
+    # Город на -ь (женский род) → -и
+    if word_lower.endswith('ь'):
+        return word[:-1] + 'и'
+
+    # Город на -о/-е (средний род) → без изменений
+    if word_lower.endswith(('во', 'ко', 'но', 'ро', 'ло', 'то', 'е')):
+        return word
+
+    # По умолчанию добавляем 'е' (мужской род)
+    return word + 'е'
+
+
+def capitalize_phrase(phrase):
+    """
+    Корректная капитализация фразы (первая буква заглавная, остальные как есть)
+
+    Args:
+        phrase: Фраза для капитализации
+
+    Returns:
+        str: Капитализированная фраза
+    """
+    if not phrase:
+        return phrase
+    return phrase[0].upper() + phrase[1:]
+
+
 def generate_article_title(phrase, category, config, template_index=0):
     """Генерация заголовка статьи на основе ключевой фразы и категории"""
     city = config['business_info']['city']
@@ -245,6 +396,9 @@ def generate_article_title(phrase, category, config, template_index=0):
         city_full = city
         city_abbr = city
 
+    # Склоняем город в предложный падеж (где? в чём?)
+    city_prepositional = decline_word_prepositional(city_full)
+
     # Проверяем, есть ли уже город в фразе
     has_city_full = city_full.lower() in phrase_lower
     has_city_abbr = city_abbr.lower() in phrase_lower
@@ -253,27 +407,27 @@ def generate_article_title(phrase, category, config, template_index=0):
     # Шаблоны заголовков для разных типов
     templates = {
         'commercial': [
-            f"{phrase.capitalize()}: цены 2025, этапы работ",
-            f"{phrase.capitalize()} в {city_full}: выгодные условия" if not has_city_full else f"{phrase.capitalize()}: выгодные условия",
-            f"{phrase.capitalize()} {city_abbr}: профессиональное качество" if not (has_city_abbr or has_spb) else f"{phrase.capitalize()}: профессиональное качество"
+            f"{capitalize_phrase(phrase)}: цены 2025, этапы работ",
+            f"{capitalize_phrase(phrase)} в {city_prepositional}: выгодные условия" if not has_city_full else f"{capitalize_phrase(phrase)}: выгодные условия",
+            f"{capitalize_phrase(phrase)} {city_abbr}: профессиональное качество" if not (has_city_abbr or has_spb) else f"{capitalize_phrase(phrase)}: профессиональное качество"
         ],
         'price': [
-            f"Сколько стоит {phrase}" if not phrase_lower.startswith('сколько стоит') else phrase.capitalize(),
-            f"{phrase.capitalize()}: актуальные цены 2025 {city_full}" if not has_city_full else f"{phrase.capitalize()}: актуальные цены 2025",
-            f"Стоимость {phrase}" if not phrase_lower.startswith('стоимость') else phrase.capitalize()
+            f"Сколько стоит {phrase}" if not phrase_lower.startswith('сколько стоит') else capitalize_phrase(phrase),
+            f"{capitalize_phrase(phrase)}: актуальные цены 2025 в {city_prepositional}" if not has_city_full else f"{capitalize_phrase(phrase)}: актуальные цены 2025",
+            f"Стоимость {phrase} в {city_prepositional}" if not phrase_lower.startswith('стоимость') and not has_city_full else capitalize_phrase(phrase)
         ],
         'informational': [
-            f"{phrase.capitalize()}: полное руководство {city_full}" if not has_city_full else f"{phrase.capitalize()}: полное руководство",
+            f"{capitalize_phrase(phrase)}: полное руководство в {city_prepositional}" if not has_city_full else f"{capitalize_phrase(phrase)}: полное руководство",
             f"Как выбрать: {phrase}",
-            f"{phrase.capitalize()}: советы экспертов"
+            f"{capitalize_phrase(phrase)}: советы экспертов"
         ],
         'comparison': [
-            f"{phrase.capitalize()}: какой вариант выбрать в {city_full}" if not has_city_full else f"{phrase.capitalize()}: какой вариант выбрать",
-            f"{phrase.capitalize()}: сравнение и отзывы"
+            f"{capitalize_phrase(phrase)}: какой вариант выбрать в {city_prepositional}" if not has_city_full else f"{capitalize_phrase(phrase)}: какой вариант выбрать",
+            f"{capitalize_phrase(phrase)}: сравнение и отзывы"
         ],
         'other': [
-            f"{phrase.capitalize()} в {city_full}" if not has_city_full else phrase.capitalize(),
-            f"{phrase.capitalize()}: всё что нужно знать"
+            f"{capitalize_phrase(phrase)} в {city_prepositional}" if not has_city_full else capitalize_phrase(phrase),
+            f"{capitalize_phrase(phrase)}: всё что нужно знать"
         ]
     }
 
