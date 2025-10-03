@@ -233,32 +233,46 @@ def calculate_priority(frequency):
 def generate_article_title(phrase, category, config, template_index=0):
     """Генерация заголовка статьи на основе ключевой фразы и категории"""
     city = config['business_info']['city']
-    city_short = city.split('-')[0] if '-' in city else city
     phrase_lower = phrase.lower()
+
+    # Определяем варианты названия города
+    if '-' in city:
+        # Для составных городов: полное название и аббревиатура
+        city_full = city
+        city_abbr = ''.join([word[0].upper() for word in city.split('-')]) + 'б'  # СПб, НН и т.д.
+    else:
+        # Для обычных городов: только полное название
+        city_full = city
+        city_abbr = city
+
+    # Проверяем, есть ли уже город в фразе
+    has_city_full = city_full.lower() in phrase_lower
+    has_city_abbr = city_abbr.lower() in phrase_lower
+    has_spb = 'спб' in phrase_lower  # для Санкт-Петербурга
 
     # Шаблоны заголовков для разных типов
     templates = {
         'commercial': [
             f"{phrase.capitalize()}: цены 2025, этапы работ",
-            f"{phrase.capitalize()} в {city_short}: выгодные условия",
-            f"{phrase.capitalize()}: профессиональное качество"
+            f"{phrase.capitalize()} в {city_full}: выгодные условия" if not has_city_full else f"{phrase.capitalize()}: выгодные условия",
+            f"{phrase.capitalize()} {city_abbr}: профессиональное качество" if not (has_city_abbr or has_spb) else f"{phrase.capitalize()}: профессиональное качество"
         ],
         'price': [
             f"Сколько стоит {phrase}" if not phrase_lower.startswith('сколько стоит') else phrase.capitalize(),
-            f"{phrase.capitalize()}: актуальные цены 2025",
+            f"{phrase.capitalize()}: актуальные цены 2025 {city_full}" if not has_city_full else f"{phrase.capitalize()}: актуальные цены 2025",
             f"Стоимость {phrase}" if not phrase_lower.startswith('стоимость') else phrase.capitalize()
         ],
         'informational': [
-            f"{phrase.capitalize()}: полное руководство",
+            f"{phrase.capitalize()}: полное руководство {city_full}" if not has_city_full else f"{phrase.capitalize()}: полное руководство",
             f"Как выбрать: {phrase}",
             f"{phrase.capitalize()}: советы экспертов"
         ],
         'comparison': [
-            f"{phrase.capitalize()}: какой вариант выбрать",
+            f"{phrase.capitalize()}: какой вариант выбрать в {city_full}" if not has_city_full else f"{phrase.capitalize()}: какой вариант выбрать",
             f"{phrase.capitalize()}: сравнение и отзывы"
         ],
         'other': [
-            f"{phrase.capitalize()} в {city_short}",
+            f"{phrase.capitalize()} в {city_full}" if not has_city_full else phrase.capitalize(),
             f"{phrase.capitalize()}: всё что нужно знать"
         ]
     }
