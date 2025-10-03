@@ -1,0 +1,27 @@
+{
+  "business_info": {
+    "site": "example.com",
+    "niche": "ваша ниша",
+    "city": "Москва",
+    "region_code": 213,
+    "services": [
+      "услуга 1",
+      "услуга 2",
+      "услуга 3"
+    ],
+    "competitors": [
+      "https://competitor1.com",
+      "https://competitor2.com"
+    ],
+    "budget": "10-20 статей/месяц",
+    "utp": [
+      "ваше преимущество 1",
+      "ваше преимущество 2"
+    ]
+  },
+  "parser_settings": {
+    "devices": ["desktop", "mobile"],
+    "top_results_limit": 50,
+    "delay_between_requests": 2
+  }
+}
