@@ -4,6 +4,14 @@
 import os
 import json
 import sys
+import urllib.request
+import urllib.error
+import time
+
+
+# API настройки
+API_BASE_URL = "https://api.wordstat.yandex.net"
+API_METHOD = "/v1/topRequests"
 
 
 def load_env():
@@ -74,6 +82,80 @@ def load_queries():
     return queries
 
 
+def fetch_top_requests(token, phrase, region, devices, max_retries=3):
+    """
+    Получает топ популярных запросов для фразы из API Вордстата
+
+    Args:
+        token: OAuth токен
+        phrase: Поисковая фраза
+        region: Код региона (например, 213 для Москвы)
+        devices: Список устройств ['desktop', 'mobile']
+        max_retries: Количество попыток при ошибке
+
+    Returns:
+        dict: JSON с результатами или None при ошибке
+    """
+    url = API_BASE_URL + API_METHOD
+
+    # Формируем тело запроса
+    data = {
+        "phrase": phrase,
+        "regions": [region],
+        "devices": devices
+    }
+
+    json_data = json.dumps(data).encode('utf-8')
+
+    # Заголовки
+    headers = {
+        'Content-Type': 'application/json;charset=utf-8',
+        'Authorization': f'Bearer {token}'
+    }
+
+    # Попытки запроса с ретраями
+    for attempt in range(1, max_retries + 1):
+        try:
+            request = urllib.request.Request(
+                url,
+                data=json_data,
+                headers=headers,
+                method='POST'
+            )
+
+            with urllib.request.urlopen(request, timeout=30) as response:
+                result = json.loads(response.read().decode('utf-8'))
+                return result
+
+        except urllib.error.HTTPError as e:
+            error_body = e.read().decode('utf-8') if e.fp else 'No details'
+            print(f"   ⚠️ HTTP ошибка {e.code}: {error_body}")
+
+            if attempt < max_retries:
+                wait_time = 5 * attempt
+                print(f"   🔄 Повтор через {wait_time} сек... (попытка {attempt}/{max_retries})")
+                time.sleep(wait_time)
+            else:
+                print(f"   ❌ Не удалось получить данные после {max_retries} попыток")
+                return None
+
+        except urllib.error.URLError as e:
+            print(f"   ⚠️ Ошибка соединения: {e.reason}")
+
+            if attempt < max_retries:
+                wait_time = 5 * attempt
+                print(f"   🔄 Повтор через {wait_time} сек...")
+                time.sleep(wait_time)
+            else:
+                return None
+
+        except Exception as e:
+            print(f"   ❌ Неожиданная ошибка: {e}")
+            return None
+
+    return None
+
+
 def main():
     """Главная функция парсера"""
     print("🚀 Запуск парсера Яндекс Вордстат\n")
@@ -83,19 +165,37 @@ def main():
     config = load_config()
     queries = load_queries()
 
-    # Вывод информации
     business = config['business_info']
     settings = config['parser_settings']
 
     print(f"📂 Регион: {business['city']} ({business['region_code']})")
     print(f"📱 Устройства: {', '.join(settings['devices'])}")
-    print(f"📋 Загружено запросов: {len(queries)}")
-    print(f"🔑 Токен: {'✅ Загружен' if token else '❌ Отсутствует'}\n")
+    print(f"📋 Загружено запросов: {len(queries)}\n")
 
-    # Список запросов
-    print("Список запросов:")
-    for i, query in enumerate(queries, 1):
-        print(f"  {i}. {query}")
+    # ТЕСТ: запрос первой фразы
+    print("🧪 Тестирование API...\n")
+    test_phrase = queries[0]
+    print(f"Тестовый запрос: {test_phrase}")
+
+    result = fetch_top_requests(
+        token=token,
+        phrase=test_phrase,
+        region=business['region_code'],
+        devices=settings['devices']
+    )
+
+    if result:
+        print(f"✅ API работает!")
+        print(f"📊 Общая частотность: {result.get('totalCount', 0)}")
+        print(f"📝 Получено фраз: {len(result.get('topRequests', []))}")
+
+        # Показываем топ-5
+        if result.get('topRequests'):
+            print("\nТоп-5 фраз:")
+            for i, item in enumerate(result['topRequests'][:5], 1):
+                print(f"  {i}. {item['phrase']} — {item['count']}")
+    else:
+        print("❌ API не отвечает")
 
 
 if __name__ == "__main__":

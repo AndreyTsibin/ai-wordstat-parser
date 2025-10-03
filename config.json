@@ -20,7 +20,7 @@
     ]
   },
   "parser_settings": {
-    "devices": ["desktop", "mobile"],
+    "devices": ["desktop"],
     "top_results_limit": 50,
     "delay_between_requests": 2
   }
