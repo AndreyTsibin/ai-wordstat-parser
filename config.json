@@ -1,6 +1,6 @@
 {
   "business_info": {
-    "site": "lenaremont-spb.ru",
+    "site": "apple.com",
     "niche": "ремонт комнат",
     "city": "Санкт-Петербург",
     "region_code": 2,
@@ -17,9 +17,9 @@
     ],
     "budget": "20-30 статей/месяц",
     "utp": [
-      "работа без отселения заказчика",
-      "гарантия на работы",
-      "фиксированная цена без изменений"
+      "Бесплатный замер и смета",
+      "Гарантия на работы 2 года",
+      "Фиксированная цена без изменений"
     ]
   },
   "parser_settings": {
@@ -28,19 +28,20 @@
     "delay_between_requests": 2
   },
   "content_plan_settings": {
-    "target_page": "/remont-komnat-spb",
+    "target_page": "/remont-kvartir-spb",
     "articles_per_month": 7,
-    "planning_period_months": 5,
+    "planning_period_months": 3,
     "expected_traffic_per_month": "5000-8000",
     "conversion_rate_percent": "2-3",
     "target_top_positions": 20,
     "article_length_words": "2000-4000",
-    "phone": "+7 (812) 218 12 31",
+    "phone": "+7 (800) 000 00 00",
     "price_per_sqm": "от 8000-9000₽/м²",
     "internal_links": [
       "/remont-komnaty",
       "/remont-tualeta-spb",
-      "/remont-kvartir-spb"
+      "/remont-kvartir-spb",
+      "/elektrik-spb"
     ],
     "anchor_texts": [
       "ремонт комнаты в СПб",
