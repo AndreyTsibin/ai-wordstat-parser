@@ -1,22 +1,25 @@
 {
   "business_info": {
-    "site": "example.com",
-    "niche": "ваша ниша",
-    "city": "Москва",
-    "region_code": 213,
+    "site": "lenaremont-spb.ru",
+    "niche": "ремонт комнат",
+    "city": "Санкт-Петербург",
+    "region_code": 2,
     "services": [
-      "услуга 1",
-      "услуга 2",
-      "услуга 3"
+      "ремонт комнаты",
+      "косметический ремонт комнаты",
+      "капитальный ремонт комнаты",
+      "ремонт комнаты под ключ"
     ],
     "competitors": [
-      "https://competitor1.com",
-      "https://competitor2.com"
+      "https://remont-vm.com/remont-komnat/",
+      "https://www.stroikaspb.com/remont-komnat/",
+      "https://www.prorabneva.ru/remont-komnat"
     ],
     "budget": "10-20 статей/месяц",
     "utp": [
-      "ваше преимущество 1",
-      "ваше преимущество 2"
+      "работа без отселения заказчика",
+      "гарантия на работы",
+      "фиксированная цена без изменений"
     ]
   },
   "parser_settings": {
