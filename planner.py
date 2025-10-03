@@ -213,7 +213,7 @@ def cluster_phrases(phrases, config):
     for category in category_clusters:
         category_clusters[category].sort(key=lambda x: x['frequency'], reverse=True)
 
-    return semantic_clusters
+    return category_clusters
 
 
 def calculate_priority(frequency):
