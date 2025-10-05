@@ -404,10 +404,14 @@ def generate_summary(all_results, seen_phrases):
 
 
 def save_results(config, queries, all_results, seen_phrases):
-    """Сохраняет результаты в results.md"""
+    """Сохраняет результаты в output/results.md"""
     from datetime import datetime
+    import os
 
     timestamp = datetime.now().strftime("%d.%m.%Y %H:%M")
+
+    # Создаём папку output, если её нет
+    os.makedirs('output', exist_ok=True)
 
     # Генерируем документ
     content = generate_header(config, len(queries), timestamp)
@@ -425,10 +429,11 @@ def save_results(config, queries, all_results, seen_phrases):
     content += generate_summary([r for r in all_results if r], seen_phrases)
 
     # Сохраняем
-    with open('results.md', 'w', encoding='utf-8') as f:
+    output_path = 'output/results.md'
+    with open(output_path, 'w', encoding='utf-8') as f:
         f.write(content)
 
-    print(f"\n✅ Результаты сохранены в results.md")
+    print(f"\n✅ Результаты сохранены в {output_path}")
 
 
 def collect_top_phrases_for_recursion(all_results, minus_words, top_n=10):
@@ -460,8 +465,12 @@ def collect_top_phrases_for_recursion(all_results, minus_words, top_n=10):
 
 
 def save_to_csv(seen_phrases, minus_words):
-    """Сохраняет результаты в CSV для удобства работы"""
+    """Сохраняет результаты в output/results.csv для удобства работы"""
     import csv
+    import os
+
+    # Создаём папку output, если её нет
+    os.makedirs('output', exist_ok=True)
 
     # Собираем все фразы с их данными
     phrases_data = []
@@ -474,14 +483,15 @@ def save_to_csv(seen_phrases, minus_words):
             })
 
     # Сохраняем CSV
-    with open('results.csv', 'w', encoding='utf-8-sig', newline='') as f:
+    output_path = 'output/results.csv'
+    with open(output_path, 'w', encoding='utf-8-sig', newline='') as f:
         writer = csv.writer(f)
         writer.writerow(['Фраза', 'Встречается в запросах'])
 
         for data in phrases_data:
             writer.writerow([data['phrase'], data['sources_count']])
 
-    print(f"📊 Экспорт в CSV: results.csv")
+    print(f"📊 Экспорт в CSV: {output_path}")
 
 
 def main():

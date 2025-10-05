@@ -24,12 +24,12 @@ def load_config():
 
 
 def parse_results_md():
-    """Парсинг results.md для извлечения данных о ключевых фразах"""
+    """Парсинг output/results.md для извлечения данных о ключевых фразах"""
     try:
-        with open('results.md', 'r', encoding='utf-8') as f:
+        with open('output/results.md', 'r', encoding='utf-8') as f:
             content = f.read()
     except FileNotFoundError:
-        print("❌ Ошибка: файл results.md не найден. Запустите сначала parser.py")
+        print("❌ Ошибка: файл output/results.md не найден. Запустите сначала parser.py")
         sys.exit(1)
 
     phrases = []
@@ -404,30 +404,30 @@ def generate_article_title(phrase, category, config, template_index=0):
     has_city_abbr = city_abbr.lower() in phrase_lower
     has_spb = 'спб' in phrase_lower  # для Санкт-Петербурга
 
-    # Шаблоны заголовков для разных типов
+    # Шаблоны заголовков для разных типов (e-commerce электроника)
     templates = {
         'commercial': [
-            f"{capitalize_phrase(phrase)}: цены 2025, этапы работ",
-            f"{capitalize_phrase(phrase)} в {city_prepositional}: выгодные условия" if not has_city_full else f"{capitalize_phrase(phrase)}: выгодные условия",
-            f"{capitalize_phrase(phrase)} {city_abbr}: профессиональное качество" if not (has_city_abbr or has_spb) else f"{capitalize_phrase(phrase)}: профессиональное качество"
+            f"{capitalize_phrase(phrase)}: выгодные цены 2025" if not has_city_full else f"{capitalize_phrase(phrase)}: выгодные цены 2025",
+            f"{capitalize_phrase(phrase)} в {city_prepositional} с доставкой" if not has_city_full else f"{capitalize_phrase(phrase)} с доставкой",
+            f"{capitalize_phrase(phrase)}: официальная гарантия" if not (has_city_abbr or has_spb) else f"{capitalize_phrase(phrase)}: официальная гарантия"
         ],
         'price': [
-            f"Сколько стоит {phrase}" if not phrase_lower.startswith('сколько стоит') else capitalize_phrase(phrase),
-            f"{capitalize_phrase(phrase)}: актуальные цены 2025 в {city_prepositional}" if not has_city_full else f"{capitalize_phrase(phrase)}: актуальные цены 2025",
-            f"Стоимость {phrase} в {city_prepositional}" if not phrase_lower.startswith('стоимость') and not has_city_full else capitalize_phrase(phrase)
+            f"{capitalize_phrase(phrase)}: актуальные цены 2025" if not has_city_full else f"{capitalize_phrase(phrase)}: актуальные цены 2025",
+            f"{capitalize_phrase(phrase)} — сравнение стоимости в {city_prepositional}" if not has_city_full else f"{capitalize_phrase(phrase)} — сравнение стоимости",
+            f"Цена на {phrase} в {city_prepositional}: обзор предложений" if not phrase_lower.startswith('цена') and not has_city_full else f"{capitalize_phrase(phrase)}: обзор предложений"
         ],
         'informational': [
-            f"{capitalize_phrase(phrase)}: полное руководство в {city_prepositional}" if not has_city_full else f"{capitalize_phrase(phrase)}: полное руководство",
-            f"Как выбрать: {phrase}",
-            f"{capitalize_phrase(phrase)}: советы экспертов"
+            f"{capitalize_phrase(phrase)}: гид по выбору 2025" if not has_city_full else f"{capitalize_phrase(phrase)}: гид по выбору 2025",
+            f"Как выбрать {phrase}: советы экспертов" if not phrase_lower.startswith('как выбрать') else f"{capitalize_phrase(phrase)}: советы экспертов",
+            f"{capitalize_phrase(phrase)}: характеристики и особенности"
         ],
         'comparison': [
-            f"{capitalize_phrase(phrase)}: какой вариант выбрать в {city_prepositional}" if not has_city_full else f"{capitalize_phrase(phrase)}: какой вариант выбрать",
-            f"{capitalize_phrase(phrase)}: сравнение и отзывы"
+            f"{capitalize_phrase(phrase)}: рейтинг лучших моделей 2025" if not has_city_full else f"{capitalize_phrase(phrase)}: рейтинг лучших 2025",
+            f"{capitalize_phrase(phrase)}: сравнение и отзывы покупателей"
         ],
         'other': [
-            f"{capitalize_phrase(phrase)} в {city_prepositional}" if not has_city_full else capitalize_phrase(phrase),
-            f"{capitalize_phrase(phrase)}: всё что нужно знать"
+            f"{capitalize_phrase(phrase)} в {city_prepositional}: каталог и цены" if not has_city_full else f"{capitalize_phrase(phrase)}: каталог и цены",
+            f"{capitalize_phrase(phrase)}: актуальная информация 2025"
         ]
     }
 
@@ -623,7 +623,7 @@ def generate_content_recommendations(business, settings):
 
 ### **SEO-требования:**
 - **Плотность ключей:** 1-2%
-- **LSI-слова:** мастер, бригада, смета, гарантия, материалы
+- **LSI-слова:** купить, доставка, цена, гарантия, характеристики, отзывы, обзор, рейтинг
 - **Title:** до 60 символов с ключом
 - **Description:** 150-160 символов с УТП
 
@@ -656,8 +656,13 @@ def generate_crosslinking_strategy(settings):
 
 
 def save_content_plan(markdown_content):
-    """Сохранение плана статей в файл"""
-    output_file = 'content_plan.md'
+    """Сохранение плана статей в output/content_plan.md"""
+    import os
+
+    # Создаём папку output, если её нет
+    os.makedirs('output', exist_ok=True)
+
+    output_file = 'output/content_plan.md'
     try:
         with open(output_file, 'w', encoding='utf-8') as f:
             f.write(markdown_content)

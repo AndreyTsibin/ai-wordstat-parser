@@ -2,9 +2,7 @@
 .env
 
 # Результаты работы
-results.md
-results.csv
-content_plan.md
+output/
 queries.txt
 
 # Python
