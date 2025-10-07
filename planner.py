@@ -115,7 +115,10 @@ def normalize_phrase(phrase):
         'комната': 'комнат',
         'кв м': '',
         'м ': '',
-        '  ': ' '
+        '  ': ' ',
+        'спб': '',
+        'санкт-петербург': '',
+        'петербург': ''
     }
 
     for old, new in replacements.items():
@@ -127,13 +130,13 @@ def normalize_phrase(phrase):
     for word in words:
         if not deduplicated_words or word != deduplicated_words[-1]:
             deduplicated_words.append(word)
-    normalized = ' '.join(deduplicated_words)
 
-    # Сортируем слова для унификации порядка (кроме первого - это обычно главное слово)
-    if len(deduplicated_words) > 2:
-        first_word = deduplicated_words[0]
-        rest_sorted = sorted(deduplicated_words[1:])
-        normalized = ' '.join([first_word] + rest_sorted)
+    # Убираем короткие предлоги и союзы
+    stop_words = {'в', 'на', 'и', 'с', 'под', 'для', 'по', 'от', 'до', 'из', 'к', 'о'}
+    meaningful_words = [w for w in deduplicated_words if w not in stop_words and len(w) > 1]
+
+    # Сортируем слова для унификации порядка
+    normalized = ' '.join(sorted(meaningful_words))
 
     return normalized
 
@@ -301,19 +304,11 @@ def cluster_phrases(phrases, config):
 
             semantic_clusters[cluster_name].append(phrase_data)
 
-    # Группируем также по категориям для совместимости
-    category_clusters = defaultdict(list)
-    for phrase_data in filtered:
-        category_clusters[phrase_data['category']].append(phrase_data)
-
     # Сортируем каждую группу по частотности
     for cluster in semantic_clusters:
         semantic_clusters[cluster].sort(key=lambda x: x['frequency'], reverse=True)
 
-    for category in category_clusters:
-        category_clusters[category].sort(key=lambda x: x['frequency'], reverse=True)
-
-    return category_clusters
+    return semantic_clusters
 
 
 def calculate_priority(frequency):
@@ -556,18 +551,32 @@ def generate_content_plan(clusters, config):
         'blocks': []
     }
 
-    # Генерируем блоки статей по категориям
-    block_configs = settings['article_blocks']
+    # Генерируем блоки статей по семантическим кластерам
     article_counter = 1
 
-    for category, cat_config in block_configs.items():
-        if category not in clusters or len(clusters[category]) == 0:
+    # Сортируем кластеры по общей частотности (самые частотные темы — первыми)
+    sorted_clusters = sorted(
+        clusters.items(),
+        key=lambda x: sum(p['frequency'] for p in x[1]),
+        reverse=True
+    )
+
+    for cluster_name, block_phrases in sorted_clusters:
+        if len(block_phrases) == 0:
             continue
 
-        block_phrases = clusters[category]
+        # Определяем приоритет кластера по максимальной частотности
+        max_freq = max(p['frequency'] for p in block_phrases)
+        if max_freq >= 500:
+            priority = "максимальный"
+        elif max_freq >= 200:
+            priority = "высокий"
+        else:
+            priority = "средний"
+
         block = {
-            'category': category,
-            'priority': cat_config['priority'],
+            'category': cluster_name,
+            'priority': priority,
             'articles_count': len(block_phrases),
             'articles': []
         }
@@ -615,17 +624,12 @@ def format_markdown_plan(plan, config):
 
     # Генерируем блоки статей
     for idx, block in enumerate(plan['blocks'], 1):
-        category_names = {
-            'commercial': 'КОММЕРЧЕСКИЕ СТАТЬИ',
-            'price': 'ЦЕНОВЫЕ СТАТЬИ',
-            'informational': 'ИНФОРМАЦИОННЫЕ СТАТЬИ',
-            'comparison': 'СРАВНИТЕЛЬНЫЕ СТАТЬИ',
-            'other': 'ДОПОЛНИТЕЛЬНЫЕ СТАТЬИ'
-        }
-
         total_traffic = sum(a['frequency'] for a in block['articles'])
 
-        md += f"""## 🎯 БЛОК {idx}: {category_names.get(block['category'], block['category'].upper())} ({block['articles_count']} статей)
+        # Форматируем название кластера (капитализация)
+        cluster_title = block['category'].upper()
+
+        md += f"""## 🎯 БЛОК {idx}: {cluster_title} ({block['articles_count']} статей)
 *Приоритет: {block['priority'].upper()} | Целевой трафик: {total_traffic:,}+ запросов/мес*
 
 | № | Тема статьи | Ключевой запрос | Частотность | Приоритет |
