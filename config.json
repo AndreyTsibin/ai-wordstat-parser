@@ -1,31 +1,33 @@
 {
   "business_info": {
-    "site": "example-seo.ru",
-    "niche": "интернет-магазин электроники",
-    "city": "Москва",
-    "region_code": 213,
+    "site": "https://lenaremont-spb.ru/remont-komnaty",
+    "niche": "Ремонт комнат",
+    "city": "Санкт-Петербург",
+    "region_code": 2,
     "services": [
-      "ноутбуки",
-      "смартфоны",
-      "планшеты",
-      "наушники",
-      "умные часы",
-      "игровые приставки",
-      "аксессуары для гаджетов",
-      "ремонт электроники",
-      "trade-in",
-      "доставка по России"
+      "ремонт ванной комнаты",
+      "ремонт кухни",
+      "ремонт спальни",
+      "ремонт гостиной",
+      "ремонт детской комнаты",
+      "ремонт коридора",
+      "ремонт под ключ"
     ],
     "competitors": [
-      "https://www.mvideo.ru/",
-      "https://www.dns-shop.ru/",
-      "https://www.eldorado.ru/"
+      "https://www.lenremont.ru/",
+      "https://remont-vm.com/",
+      "https://www.vash-brigadir.ru/"
     ],
     "budget": "20-30 статей/месяц",
     "utp": [
-      "Бесплатная доставка от 3000₽",
-      "Гарантия производителя до 3 лет",
-      "Trade-in с выгодой до 30%"
+      "Гарантия до 2 лет",
+      "Смета за 1 день",
+      "Соблюдение сроков",
+      "Работаем без предоплаты",
+      "Собственный штат специалистов",
+      "Закупаем материалы по оптовым ценам",
+      "Бесплатный выезд замерщика",
+      "Опыт работы более 10 лет"
     ]
   },
   "parser_settings": {
@@ -35,42 +37,31 @@
     "recursive_parsing": true,
     "recursion_depth": 2,
     "recursive_top_queries": 10,
-    "minus_words": [
-      "б/у", "бу", "поломанн", "сломанн", "не работа", "авито", "юла",
-      "скачать", "торрент", "взлом", "crack", "пират", "бесплатн скачать",
-      "своими руками", "ремонт самостоятельно", "aliexpress", "алиэкспресс",
-      "китай", "подделк", "фейк", "копи", "реплик"
-    ]
+    "minus_words": ["купить", "цена", "стоимость", "скидка", "акция", "бесплатно", "дешево", "вакансия", "работа", "фото", "видео", "смотреть", "своими руками", "самостоятельно", "сам", "форум"]
   },
   "content_plan_settings": {
-    "target_page": "/catalog",
+    "target_page": "/remont-komnaty",
     "articles_per_month": 10,
     "planning_period_months": 3,
     "expected_traffic_per_month": "10000-15000",
     "conversion_rate_percent": "3-5",
     "target_top_positions": 20,
     "article_length_words": "1500-3000",
-    "phone": "+7 (495) 123-45-67",
-    "price_per_sqm": "от 15000₽",
+    "phone": "+7 (812) 218 12 31",
+    "price_per_sqm": "от 8000₽",
     "internal_links": [
-      "/noutbuki",
-      "/smartfony",
-      "/naushniki",
-      "/aksessuary"
+      "/remont-tualeta-spb",
+      "/remont-plastikovyh-okon",
+      "/remont-kvartir-novostrojka-spb",
+      "/remont-kvartir-spb"
     ],
     "anchor_texts": [
-      "купить ноутбук в Москве",
-      "смартфоны с доставкой",
-      "интернет-магазин электроники",
-      "купить технику недорого",
-      "гаджеты в Москве",
-      "наушники с быстрой доставкой",
-      "планшеты по выгодным ценам",
-      "игровые приставки",
-      "умные часы",
-      "trade-in техники"
+      "ремонт туалета",
+      "ремонт пластиковых окон",
+      "ремонт квартир в новостройке",
+      "ремонт квартир под ключ"
     ],
-    "min_frequency_threshold": 50,
+    "min_frequency_threshold": 150,
     "priority_categories": ["commercial", "price"],
     "article_blocks": {
       "commercial": {

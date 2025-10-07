@@ -94,6 +94,76 @@ def extract_category(category_str):
     return 'other'
 
 
+def normalize_phrase(phrase):
+    """
+    Нормализует фразу для сравнения (убирает синонимы и вариации)
+
+    Args:
+        phrase: Фраза для нормализации
+
+    Returns:
+        str: Нормализованная фраза
+    """
+    normalized = phrase.lower().strip()
+
+    # Убираем типичные вариации и синонимы
+    replacements = {
+        'ванны': 'ванной',
+        'ванна': 'ванной',
+        'квартиры': 'квартир',
+        'комнаты': 'комнат',
+        'комната': 'комнат',
+        'кв м': '',
+        'м ': '',
+        '  ': ' '
+    }
+
+    for old, new in replacements.items():
+        normalized = normalized.replace(old, new)
+
+    # Удаляем повторяющиеся слова (например, "ремонт ванной ванной" -> "ремонт ванной")
+    words = normalized.split()
+    deduplicated_words = []
+    for word in words:
+        if not deduplicated_words or word != deduplicated_words[-1]:
+            deduplicated_words.append(word)
+    normalized = ' '.join(deduplicated_words)
+
+    # Сортируем слова для унификации порядка (кроме первого - это обычно главное слово)
+    if len(deduplicated_words) > 2:
+        first_word = deduplicated_words[0]
+        rest_sorted = sorted(deduplicated_words[1:])
+        normalized = ' '.join([first_word] + rest_sorted)
+
+    return normalized
+
+
+def deduplicate_phrases(phrases):
+    """
+    Удаляет дубликаты и оставляет фразу с максимальной частотностью
+
+    Args:
+        phrases: Список фраз с данными
+
+    Returns:
+        list: Список уникальных фраз
+    """
+    grouped = defaultdict(list)
+
+    for p in phrases:
+        # Группируем по нормализованному ключу
+        key = normalize_phrase(p['phrase'])
+        grouped[key].append(p)
+
+    # Для каждой группы берём вариант с максимальной частотностью
+    deduplicated = []
+    for variants in grouped.values():
+        best = max(variants, key=lambda x: x['frequency'])
+        deduplicated.append(best)
+
+    return deduplicated
+
+
 def extract_root_words(phrase):
     """
     Извлекает корневые слова из фразы для кластеризации
@@ -169,10 +239,40 @@ def find_semantic_cluster(phrase, phrase_data, existing_clusters, min_common_wor
 def cluster_phrases(phrases, config):
     """Кластеризация фраз по темам статей с улучшенной семантической группировкой"""
     settings = config['content_plan_settings']
+    business = config['business_info']
     min_freq = settings.get('min_frequency_threshold', 50)
 
-    # Фильтруем фразы по минимальной частотности
-    filtered = [p for p in phrases if p['frequency'] >= min_freq]
+    # Извлекаем ключевые слова ниши для фильтрации
+    niche_keywords = set()
+    for service in business.get('services', []):
+        niche_keywords.update(service.lower().split())
+
+    # Добавляем общие слова для интернет-магазина электроники
+    niche_keywords.update(['электроник', 'гаджет', 'техник', 'устройств', 'девайс'])
+
+    # Стоп-слова для фильтрации нерелевантных тем
+    irrelevant_keywords = {
+        'одежд', 'обув', 'аксессуар одежд', 'одёж', 'платье', 'костюм', 'брюк',
+        'куртк', 'пальто', 'сумк', 'рюкзак одежд', 'шапк', 'перчатк'
+    }
+
+    # Фильтруем фразы по минимальной частотности и релевантности
+    filtered = []
+    for p in phrases:
+        if p['frequency'] < min_freq:
+            continue
+
+        phrase_lower = p['phrase'].lower()
+
+        # Проверяем, есть ли нерелевантные слова
+        has_irrelevant = any(word in phrase_lower for word in irrelevant_keywords)
+        if has_irrelevant:
+            continue
+
+        filtered.append(p)
+
+    # Дедупликация: убираем одинаковые фразы с разными вариациями
+    filtered = deduplicate_phrases(filtered)
 
     # Сортируем по частотности (самые частотные будут создавать кластеры)
     filtered.sort(key=lambda x: x['frequency'], reverse=True)
@@ -381,7 +481,7 @@ def capitalize_phrase(phrase):
     return phrase[0].upper() + phrase[1:]
 
 
-def generate_article_title(phrase, category, config, template_index=0):
+def generate_article_title(phrase, category, config):
     """Генерация заголовка статьи на основе ключевой фразы и категории"""
     city = config['business_info']['city']
     phrase_lower = phrase.lower()
@@ -404,39 +504,36 @@ def generate_article_title(phrase, category, config, template_index=0):
     has_city_abbr = city_abbr.lower() in phrase_lower
     has_spb = 'спб' in phrase_lower  # для Санкт-Петербурга
 
-    # Шаблоны заголовков для разных типов (e-commerce электроника)
+    # Шаблоны заголовков для разных типов (строительство и ремонт)
     templates = {
         'commercial': [
-            f"{capitalize_phrase(phrase)}: выгодные цены 2025" if not has_city_full else f"{capitalize_phrase(phrase)}: выгодные цены 2025",
-            f"{capitalize_phrase(phrase)} в {city_prepositional} с доставкой" if not has_city_full else f"{capitalize_phrase(phrase)} с доставкой",
-            f"{capitalize_phrase(phrase)}: официальная гарантия" if not (has_city_abbr or has_spb) else f"{capitalize_phrase(phrase)}: официальная гарантия"
+            f"{capitalize_phrase(phrase)} в {city_prepositional}" if not (has_city_full or has_city_abbr or has_spb) else f"{capitalize_phrase(phrase)}",
+            f"{capitalize_phrase(phrase)}: цены и сроки" if not (has_city_full or has_city_abbr or has_spb) else f"{capitalize_phrase(phrase)} — актуальные расценки",
+            f"{capitalize_phrase(phrase)}: недорого с гарантией"
         ],
         'price': [
-            f"{capitalize_phrase(phrase)}: актуальные цены 2025" if not has_city_full else f"{capitalize_phrase(phrase)}: актуальные цены 2025",
-            f"{capitalize_phrase(phrase)} — сравнение стоимости в {city_prepositional}" if not has_city_full else f"{capitalize_phrase(phrase)} — сравнение стоимости",
-            f"Цена на {phrase} в {city_prepositional}: обзор предложений" if not phrase_lower.startswith('цена') and not has_city_full else f"{capitalize_phrase(phrase)}: обзор предложений"
+            f"Сколько стоит {phrase}" if not phrase_lower.startswith('сколько') and not phrase_lower.startswith('цена') else f"{capitalize_phrase(phrase)}",
+            f"{capitalize_phrase(phrase)} в {city_prepositional}: цены 2025" if not (has_city_full or has_city_abbr or has_spb) else f"{capitalize_phrase(phrase)} — обзор цен",
+            f"{capitalize_phrase(phrase)}: расценки бригад"
         ],
         'informational': [
-            f"{capitalize_phrase(phrase)}: гид по выбору 2025" if not has_city_full else f"{capitalize_phrase(phrase)}: гид по выбору 2025",
-            f"Как выбрать {phrase}: советы экспертов" if not phrase_lower.startswith('как выбрать') else f"{capitalize_phrase(phrase)}: советы экспертов",
-            f"{capitalize_phrase(phrase)}: характеристики и особенности"
+            f"{capitalize_phrase(phrase)}: полное руководство",
+            f"Как сделать {phrase}" if not phrase_lower.startswith('как') else f"{capitalize_phrase(phrase)}: пошаговая инструкция",
+            f"{capitalize_phrase(phrase)}: этапы и особенности"
         ],
         'comparison': [
-            f"{capitalize_phrase(phrase)}: рейтинг лучших моделей 2025" if not has_city_full else f"{capitalize_phrase(phrase)}: рейтинг лучших 2025",
-            f"{capitalize_phrase(phrase)}: сравнение и отзывы покупателей"
+            f"{capitalize_phrase(phrase)}: что лучше выбрать",
+            f"{capitalize_phrase(phrase)}: сравнение вариантов и отзывы"
         ],
         'other': [
-            f"{capitalize_phrase(phrase)} в {city_prepositional}: каталог и цены" if not has_city_full else f"{capitalize_phrase(phrase)}: каталог и цены",
-            f"{capitalize_phrase(phrase)}: актуальная информация 2025"
+            f"{capitalize_phrase(phrase)} в {city_prepositional}" if not (has_city_full or has_city_abbr or has_spb) else f"{capitalize_phrase(phrase)}",
+            f"{capitalize_phrase(phrase)}: советы и рекомендации"
         ]
     }
 
-    # Получаем список шаблонов для категории
+    # Получаем список шаблонов для категории и используем первый (самый релевантный)
     category_templates = templates.get(category, templates['other'])
-
-    # Циклически выбираем шаблон для разнообразия
-    template_idx = template_index % len(category_templates)
-    return category_templates[template_idx]
+    return category_templates[0]
 
 
 def generate_content_plan(clusters, config):
@@ -475,12 +572,12 @@ def generate_content_plan(clusters, config):
             'articles': []
         }
 
-        for idx, phrase_data in enumerate(block_phrases):
+        for phrase_data in block_phrases:
             stars, priority_text = calculate_priority(phrase_data['frequency'])
 
             article = {
                 'number': article_counter,
-                'title': generate_article_title(phrase_data['phrase'], phrase_data['category'], config, idx),
+                'title': generate_article_title(phrase_data['phrase'], phrase_data['category'], config),
                 'key_phrase': phrase_data['phrase'],
                 'frequency': phrase_data['frequency'],
                 'priority': priority_text,
@@ -623,7 +720,7 @@ def generate_content_recommendations(business, settings):
 
 ### **SEO-требования:**
 - **Плотность ключей:** 1-2%
-- **LSI-слова:** купить, доставка, цена, гарантия, характеристики, отзывы, обзор, рейтинг
+- **LSI-слова:** цена, стоимость, недорого, качественно, срок, материалы, работы, мастер, бригада
 - **Title:** до 60 символов с ключом
 - **Description:** 150-160 символов с УТП
 
